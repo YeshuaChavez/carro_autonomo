@@ -402,7 +402,7 @@ export default function CarritoApp() {
     setBtError("");
     try {
       const device = await navigator.bluetooth.requestDevice({
-        filters: [{ name: "CarritoAutonomo" }],
+        filters: [{ name: "CarritoBT" }],
         optionalServices: [SERVICE_UUID],
       });
       deviceRf.current = device;
