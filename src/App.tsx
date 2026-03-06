@@ -32,9 +32,9 @@ const MAX_DIST = 150;
 const clamp = (v: number, mn: number, mx: number) => Math.min(mx, Math.max(mn, v));
 const pct = (v: number) => clamp(Math.round((v / MAX_DIST) * 100), 0, 100);
 const distColor = (v: number) => {
-  if (v > 80) return "#FFD600"; // lejos  → amarillo
-  if (v > 40) return "#FF8C00"; // medio  → naranja
-  return "#FF1E1E";               // cerca  → rojo
+  if (v > 80) return "#FFD600";
+  if (v > 40) return "#FF8C00";
+  return "#FF1E1E";
 };
 
 // ── SVG Icons ──────────────────────────────────────────────
@@ -92,14 +92,12 @@ html,body{width:100%;height:100%;background:#080808;overflow:hidden}
 #root{width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 body{font-family:'Barlow Condensed',sans-serif;color:#F0E8D0}
 
-/* diagonal stripe bg */
 body::before{
   content:'';pointer-events:none;position:fixed;inset:0;
   background:repeating-linear-gradient(-55deg,transparent 0px,transparent 28px,rgba(255,214,0,0.014) 28px,rgba(255,214,0,0.014) 30px);
   z-index:0;
 }
 
-/* horizontal scan line */
 @keyframes scanH{0%{transform:translateX(-100%)}100%{transform:translateX(100vw)}}
 body::after{
   content:'';pointer-events:none;position:fixed;top:0;left:0;width:80px;height:100%;
@@ -107,7 +105,6 @@ body::after{
   animation:scanH 7s linear infinite;z-index:0;
 }
 
-/* scanlines overlay */
 .scanlines{
   pointer-events:none;position:fixed;inset:0;z-index:0;
   background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.12) 3px,rgba(0,0,0,0.12) 4px);
@@ -186,7 +183,6 @@ body::after{
 .log-time{color:#2a2a2a;flex-shrink:0;width:56px}
 .log-msg{color:#666}
 
-/* sensor bars */
 .sbar-wrap{margin-bottom:13px}
 .sbar-wrap:last-child{margin-bottom:0}
 .sbar-header{display:flex;justify-content:space-between;margin-bottom:5px;align-items:center}
@@ -207,7 +203,6 @@ body::after{
   font-size:9px;letter-spacing:3px;
 }
 
-/* direction pad display */
 .dpad-grid{
   display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
   gap:5px;
@@ -227,58 +222,69 @@ body::after{
 .dpad-cell.stop-dir{background:#111;color:#FFD600;border-color:#2a2000}
 .dpad-cell.stop-dir.active-dir{background:#FFD600;color:#000;box-shadow:0 0 18px #FFD60077}
 
-/* online indicator blink */
 .online-blink{animation:blink 1s step-start infinite}
 `;
 
-// ── CarDiagram ─────────────────────────────────────────────
+// ── CarDiagram — FIXED viewBox para que los beams no se corten ──
 function CarDiagram({ sensores }: { sensores: SensorData }) {
-  const beam = (v: number, max: number) => clamp(Math.round((1 - v / 400) * max), 4, max);
+  const beam = (v: number, max: number) => clamp(Math.round((v / MAX_DIST) * max), 4, max);
   const col = (k: keyof SensorData) => distColor(sensores[k]);
-  const alp = (v: number) => clamp(0.08 + (1 - v / 400) * 0.92, 0.08, 1);
+  const alp = (v: number) => clamp(0.15 + (v / MAX_DIST) * 0.85, 0.15, 1);
 
-  const CX = 150, CY = 180, CW = 86, CH = 108;
+  // El carro está centrado en 150,210 — dejamos margen arriba para los beams
+  const CX = 150, CY = 210, CW = 86, CH = 108;
   const L = CX - CW / 2, R = CX + CW / 2, T = CY - CH / 2, B = CY + CH / 2;
 
   const beams = [
-    // d1 = FRONT CTR → beam del centro (el más largo)
-    { x1: CX, y1: T, x2: CX, y2: T - beam(sensores.d1, 90), c: col("d1"), a: alp(sensores.d1), v: sensores.d1, dx: 0, dy: -10 },
+    // d1 = FRONT CTR → beam central (más largo, 100px max)
+    { x1: CX, y1: T, x2: CX, y2: T - beam(sensores.d1, 100), c: col("d1"), a: alp(sensores.d1), v: sensores.d1, dx: 0, dy: -8 },
     // d2 = DIAG IZQ → beam izquierdo frontal
-    { x1: L + 16, y1: T, x2: L + 16, y2: T - beam(sensores.d2, 72), c: col("d2"), a: alp(sensores.d2), v: sensores.d2, dx: 0, dy: -10 },
+    { x1: L + 16, y1: T, x2: L + 16, y2: T - beam(sensores.d2, 80), c: col("d2"), a: alp(sensores.d2), v: sensores.d2, dx: -14, dy: -8 },
     // d3 = DIAG DER → beam derecho frontal
-    { x1: R - 16, y1: T, x2: R - 16, y2: T - beam(sensores.d3, 72), c: col("d3"), a: alp(sensores.d3), v: sensores.d3, dx: 0, dy: -10 },
-    // d4 = LAT IZQ → beam lateral izquierdo (sin cambio)
-    { x1: L, y1: CY, x2: L - beam(sensores.d4, 62), y2: CY, c: col("d4"), a: alp(sensores.d4), v: sensores.d4, dx: -14, dy: 3 },
-    // d5 = LAT DER → beam lateral derecho (sin cambio)
-    { x1: R, y1: CY, x2: R + beam(sensores.d5, 62), y2: CY, c: col("d5"), a: alp(sensores.d5), v: sensores.d5, dx: 14, dy: 3 },
+    { x1: R - 16, y1: T, x2: R - 16, y2: T - beam(sensores.d3, 80), c: col("d3"), a: alp(sensores.d3), v: sensores.d3, dx: 14, dy: -8 },
+    // d4 = LAT IZQ → beam lateral izquierdo
+    { x1: L, y1: CY, x2: L - beam(sensores.d4, 70), y2: CY, c: col("d4"), a: alp(sensores.d4), v: sensores.d4, dx: -16, dy: 4 },
+    // d5 = LAT DER → beam lateral derecho
+    { x1: R, y1: CY, x2: R + beam(sensores.d5, 70), y2: CY, c: col("d5"), a: alp(sensores.d5), v: sensores.d5, dx: 16, dy: 4 },
   ];
 
+  // viewBox: x=50, y=50, w=200, h=280 — suficiente margen arriba para los 100px de beam
   return (
-    <svg viewBox="50 55 200 245" style={{ width: "100%", height: "100%", display: "block" }}>
+    <svg viewBox="50 50 200 285" style={{ width: "100%", height: "100%", display: "block" }}>
       {/* Grid */}
-      {[80, 110, 150, 190, 220].map(x => <line key={`gx${x}`} x1={x} y1="60" x2={x} y2="295" stroke="#131313" strokeWidth="1" />)}
-      {[80, 110, 140, 170, 200, 240, 275].map(y => <line key={`gy${y}`} x1="55" y1={y} x2="245" y2={y} stroke="#131313" strokeWidth="1" />)}
+      {[80, 110, 150, 190, 220].map(x => <line key={`gx${x}`} x1={x} y1="55" x2={x} y2="330" stroke="#131313" strokeWidth="1" />)}
+      {[80, 110, 140, 170, 200, 240, 275, 310].map(y => <line key={`gy${y}`} x1="55" y1={y} x2="245" y2={y} stroke="#131313" strokeWidth="1" />)}
 
-      {/* Sensor beams + dots + labels */}
+      {/* Sensor beams */}
       {beams.map((b, i) => (
         <g key={i}>
-          {/* Glow line */}
+          {/* Glow */}
           <line x1={b.x1} y1={b.y1} x2={b.x2} y2={b.y2}
-            stroke={b.c} strokeWidth="4" opacity={b.a * 0.2} strokeLinecap="round" />
-          {/* Main line */}
+            stroke={b.c} strokeWidth="5" opacity={b.a * 0.18} strokeLinecap="round" />
+          {/* Main */}
           <line x1={b.x1} y1={b.y1} x2={b.x2} y2={b.y2}
             stroke={b.c} strokeWidth="2" opacity={b.a} strokeLinecap="round" />
           {/* Endpoint dot */}
-          <circle cx={b.x2} cy={b.y2} r={i === 1 ? 5 : 4} fill={b.c} opacity={b.a}
+          <circle cx={b.x2} cy={b.y2} r={i === 0 ? 5 : 4} fill={b.c} opacity={b.a}
             style={{ filter: `drop-shadow(0 0 6px ${b.c})` }} />
           {/* Tick marks */}
           {[0.33, 0.66].map((s, j) => (
-            <circle key={j} cx={b.x1 + (b.x2 - b.x1) * s} cy={b.y1 + (b.y2 - b.y1) * s}
+            <circle key={j}
+              cx={b.x1 + (b.x2 - b.x1) * s}
+              cy={b.y1 + (b.y2 - b.y1) * s}
               r="1.5" fill={b.c} opacity={b.a * 0.4} />
           ))}
-          {/* Value label */}
-          <text x={b.x2 + b.dx} y={b.y2 + b.dy} textAnchor="middle"
-            fill={b.c} fontSize="8" fontFamily="'Share Tech Mono',monospace" opacity={b.a}>
+          {/* Value label — posicionado fuera del endpoint */}
+          <text
+            x={b.x2 + b.dx}
+            y={b.y2 + b.dy}
+            textAnchor="middle"
+            fill={b.c}
+            fontSize="9"
+            fontFamily="'Share Tech Mono',monospace"
+            opacity={b.a}
+            fontWeight="bold"
+          >
             {b.v.toFixed(0)}
           </text>
         </g>
@@ -287,20 +293,17 @@ function CarDiagram({ sensores }: { sensores: SensorData }) {
       {/* Wheels */}
       {([[L - 18, T + 10], [R + 1, T + 10], [L - 18, B - 42], [R + 1, B - 42]] as [number, number][]).map(([wx, wy], i) => (
         <g key={`w${i}`}>
-          <rect x={wx} y={wy} width="17" height="32" rx="4"
-            fill="#101010" stroke="#252525" strokeWidth="1.5" />
-          <rect x={wx + 3} y={wy + 3} width="11" height="26" rx="3"
-            fill="none" stroke="#1e1e1e" strokeWidth="1" />
+          <rect x={wx} y={wy} width="17" height="32" rx="4" fill="#101010" stroke="#252525" strokeWidth="1.5" />
+          <rect x={wx + 3} y={wy + 3} width="11" height="26" rx="3" fill="none" stroke="#1e1e1e" strokeWidth="1" />
           <circle cx={wx + 8.5} cy={wy + 16} r="4" fill="#0a0a0a" stroke="#333" strokeWidth="1" />
         </g>
       ))}
 
-      {/* Car body shadow */}
+      {/* Body shadow */}
       <rect x={L + 2} y={T + 2} width={CW} height={CH} rx="10" fill="#FF1E1E" opacity="0.06" />
 
       {/* Car body */}
-      <rect x={L} y={T} width={CW} height={CH} rx="10"
-        fill="url(#carGrad)" stroke="#FF1E1E" strokeWidth="1.5" />
+      <rect x={L} y={T} width={CW} height={CH} rx="10" fill="url(#carGrad)" stroke="#FF1E1E" strokeWidth="1.5" />
 
       <defs>
         <linearGradient id="carGrad" x1="0" y1="0" x2="1" y2="1">
@@ -316,48 +319,35 @@ function CarDiagram({ sensores }: { sensores: SensorData }) {
       <g clipPath="url(#carClip)">
         <line x1={L} y1={T + 22} x2={R} y2={B - 8} stroke="#FFD600" strokeWidth="18" opacity="0.04" />
         <line x1={L + 18} y1={T} x2={R} y2={B - 35} stroke="#FFD600" strokeWidth="10" opacity="0.03" />
-        <line x1={L} y1={T} x2={R} y2={B} stroke="#FF1E1E" strokeWidth="1" opacity="0.07" />
       </g>
 
       {/* Windshield */}
-      <rect x={L + 7} y={T + 9} width={CW - 14} height={CH * 0.38} rx="5"
-        fill="#0b0b0b" stroke="#1e1e1e" strokeWidth="1" />
-      <line x1={L + 12} y1={T + 13} x2={L + 17} y2={T + CH * 0.38 + 5}
-        stroke="#ffffff07" strokeWidth="5" strokeLinecap="round" />
+      <rect x={L + 7} y={T + 9} width={CW - 14} height={CH * 0.38} rx="5" fill="#0b0b0b" stroke="#1e1e1e" strokeWidth="1" />
+      <line x1={L + 12} y1={T + 13} x2={L + 17} y2={T + CH * 0.38 + 5} stroke="#ffffff07" strokeWidth="5" strokeLinecap="round" />
 
       {/* Headlights */}
-      {[[L + 4, T + 2], [R - 24, T + 2]].map(([hx, hy], i) => (
+      {([[L + 4, T + 2], [R - 24, T + 2]] as [number, number][]).map(([hx, hy], i) => (
         <g key={`hl${i}`}>
-          <rect x={hx} y={hy} width="20" height="8" rx="3"
-            fill="#FFD60033" stroke="#FFD600" strokeWidth="0.8"
-            style={{ filter: "drop-shadow(0 0 6px #FFD600)" }} />
+          <rect x={hx} y={hy} width="20" height="8" rx="3" fill="#FFD60033" stroke="#FFD600" strokeWidth="0.8" style={{ filter: "drop-shadow(0 0 6px #FFD600)" }} />
           <rect x={hx + 3} y={hy + 1.5} width="14" height="5" rx="2" fill="#FFD60066" />
         </g>
       ))}
 
       {/* Taillights */}
-      {[[L + 4, B - 10], [R - 24, B - 10]].map(([tx, ty], i) => (
-        <rect key={`tl${i}`} x={tx} y={ty} width="20" height="7" rx="3"
-          fill="#FF1E1E33" stroke="#FF1E1E" strokeWidth="0.8"
-          style={{ filter: "drop-shadow(0 0 5px #FF1E1E)" }} />
+      {([[L + 4, B - 10], [R - 24, B - 10]] as [number, number][]).map(([tx, ty], i) => (
+        <rect key={`tl${i}`} x={tx} y={ty} width="20" height="7" rx="3" fill="#FF1E1E33" stroke="#FF1E1E" strokeWidth="0.8" style={{ filter: "drop-shadow(0 0 5px #FF1E1E)" }} />
       ))}
 
       {/* ESP32 chip */}
-      <rect x={CX - 20} y={CY - 12} width="40" height="24" rx="4"
-        fill="#080808" stroke="#2a2a2a" strokeWidth="1.5" />
+      <rect x={CX - 20} y={CY - 12} width="40" height="24" rx="4" fill="#080808" stroke="#2a2a2a" strokeWidth="1.5" />
       {([-10, -3, 3, 10] as number[]).map(dx => (
         <g key={`p${dx}`}>
           <rect x={CX + dx - 2} y={CY - 16} width="4" height="4" rx="1" fill="#2a2a2a" />
           <rect x={CX + dx - 2} y={CY + 12} width="4" height="4" rx="1" fill="#2a2a2a" />
         </g>
       ))}
-      <text x={CX} y={CY + 4} textAnchor="middle"
-        fill="#FFD600" fontSize="8" fontFamily="'Share Tech Mono',monospace" letterSpacing="2">
-        ESP32
-      </text>
-      {/* chip blink LED */}
-      <circle cx={CX + 16} cy={CY - 8} r="2.5" fill="#00FF88"
-        style={{ filter: "drop-shadow(0 0 4px #00FF88)", animation: "pulse 1.5s infinite" }} />
+      <text x={CX} y={CY + 4} textAnchor="middle" fill="#FFD600" fontSize="8" fontFamily="'Share Tech Mono',monospace" letterSpacing="2">ESP32</text>
+      <circle cx={CX + 16} cy={CY - 8} r="2.5" fill="#00FF88" style={{ filter: "drop-shadow(0 0 4px #00FF88)", animation: "pulse 1.5s infinite" }} />
     </svg>
   );
 }
@@ -411,15 +401,13 @@ function IAPanel({ modo, iaLabel, iaConf }: { modo: ModoType; iaLabel: string; i
         animation: isAuto && iaLabel !== "---" ? "flicker 5s infinite" : "none",
         transition: "color .3s",
       }}>
-        {isAuto ? iaLabel.replace("_", " ").toUpperCase() : "— ESPERA —"}
+        {isAuto ? iaLabel.replace(/_/g, " ").toUpperCase() : "— ESPERA —"}
       </div>
 
       {/* Confidence */}
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 9, letterSpacing: 2, color: "#333" }}>
-            CONFIANZA
-          </span>
+          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 9, letterSpacing: 2, color: "#333" }}>CONFIANZA</span>
           <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 11, color: "#FFD600" }}>
             {isAuto ? `${confPct}%` : "--"}
           </span>
@@ -458,7 +446,7 @@ function IAPanel({ modo, iaLabel, iaConf }: { modo: ModoType; iaLabel: string; i
                 color: active ? "#FFD600" : "#2a2a2a",
                 transition: "color .25s",
               }}>
-                {a.replace("_", " ").toUpperCase()}
+                {a.replace(/_/g, " ").toUpperCase()}
               </span>
               {active && (
                 <span style={{ marginLeft: "auto", fontSize: 9, color: "#FFD60088", fontFamily: "'Share Tech Mono',monospace" }}>
@@ -485,6 +473,7 @@ export default function CarritoApp() {
   const [lastSeen, setLastSeen] = useState<Date | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevModoRef = useRef<string>("manual");
 
   const addLog = useCallback((msg: string) =>
     setLog(p => [{ t: new Date().toLocaleTimeString("es", { hour12: false }), msg }, ...p].slice(0, 50))
@@ -504,36 +493,47 @@ export default function CarritoApp() {
       if (!snap.exists()) return;
       const d: FirebaseData = snap.val();
 
+      // ── DEBUG: log raw Firebase data ──
+      console.log("[Firebase raw]", d);
+
       const newSensores: SensorData = {
-        d1: parseFloat(d.d1 ?? "400"),
-        d2: parseFloat(d.d2 ?? "400"),
-        d3: parseFloat(d.d3 ?? "400"),
-        d4: parseFloat(d.d4 ?? "400"),
-        d5: parseFloat(d.d5 ?? "400"),
+        d1: parseFloat(d.d1 ?? "150"),
+        d2: parseFloat(d.d2 ?? "150"),
+        d3: parseFloat(d.d3 ?? "150"),
+        d4: parseFloat(d.d4 ?? "150"),
+        d5: parseFloat(d.d5 ?? "150"),
       };
       setSensores(newSensores);
       setIaLabel(d.ia ?? "---");
       setIaConf(parseFloat(d.conf ?? "0"));
-      setModo((d.modo ?? "manual") as ModoType);
+
+      // ── FIX MODO: normalizar a minúsculas y trim ──
+      const rawModo = (d.modo ?? "manual").toString().toLowerCase().trim();
+      const nuevoModo: ModoType = rawModo === "auto" ? "auto" : "manual";
+      setModo(nuevoModo);
+      console.log("[Modo]", rawModo, "→", nuevoModo);
+
       setDir(d.direccion ?? "S");
       setVel(d.velocidad ?? "--");
       setLastSeen(new Date());
 
-      // Log cambios de modo
-      if (d.modo && d.modo !== modo) {
-        addLog(`[MODE] → ${d.modo === "auto" ? "AUTÓNOMO" : "MANUAL"}`);
+      // Log cambio de modo
+      if (rawModo !== prevModoRef.current) {
+        addLog(`[MODE] → ${nuevoModo === "auto" ? "AUTÓNOMO" : "MANUAL"}`);
+        prevModoRef.current = rawModo;
       }
+
       // Log peligro
-      const dists = Object.values(newSensores);
+      const dists = Object.values(newSensores) as number[];
       if (dists.some(v => v < 20)) addLog("[WARN] ¡Obstáculo muy cercano!");
 
-      // Online status: si recibimos datos → online; timeout 5s → offline
+      // Online timeout
       setOnline(true);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => setOnline(false), 5000);
     });
     return () => { unsub(); if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-  }, [modo, addLog]);
+  }, [addLog]);
 
   const isAuto = modo === "auto";
   const dpadMap = [
@@ -554,30 +554,20 @@ export default function CarritoApp() {
         borderBottom: "1px solid #151515",
         flexShrink: 0, gap: 12, position: "relative", zIndex: 2,
       }}>
-        {/* Bottom line gradient */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: 1,
-          background: "linear-gradient(90deg,transparent,#FF1E1E,#FFD600,#FF1E1E44,transparent)",
-        }} />
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg,transparent,#FF1E1E,#FFD600,#FF1E1E44,transparent)" }} />
 
         {/* LOGO */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <svg width="28" height="28" viewBox="0 0 28 28">
-            <polygon points="14,2 26,8 26,20 14,26 2,20 2,8"
-              fill="none" stroke="url(#logoGrad)" strokeWidth="1.5" />
-            <polygon points="14,6 22,10 22,18 14,22 6,18 6,10"
-              fill="url(#logoFill)" />
-            <text x="14" y="18" textAnchor="middle"
-              fill="#000" fontSize="11" fontWeight="900"
-              fontFamily="'Bebas Neue',sans-serif">C</text>
+            <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="none" stroke="url(#logoGrad)" strokeWidth="1.5" />
+            <polygon points="14,6 22,10 22,18 14,22 6,18 6,10" fill="url(#logoFill)" />
+            <text x="14" y="18" textAnchor="middle" fill="#000" fontSize="11" fontWeight="900" fontFamily="'Bebas Neue',sans-serif">C</text>
             <defs>
               <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#FF1E1E" />
-                <stop offset="100%" stopColor="#FFD600" />
+                <stop offset="0%" stopColor="#FF1E1E" /><stop offset="100%" stopColor="#FFD600" />
               </linearGradient>
               <linearGradient id="logoFill" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#FF1E1E" />
-                <stop offset="100%" stopColor="#FFD600" />
+                <stop offset="0%" stopColor="#FF1E1E" /><stop offset="100%" stopColor="#FFD600" />
               </linearGradient>
             </defs>
           </svg>
@@ -585,15 +575,12 @@ export default function CarritoApp() {
             <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, letterSpacing: 5, color: "#fff", lineHeight: 1 }}>
               CARRITO<span style={{ color: "#FFD600" }}>BT</span>
             </div>
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 8, letterSpacing: 3, color: "#333" }}>
-              LIVE DASHBOARD
-            </div>
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 8, letterSpacing: 3, color: "#333" }}>LIVE DASHBOARD</div>
           </div>
         </div>
 
         {/* CENTER STATUS */}
         <div style={{ flex: 1, display: "flex", justifyContent: "center", gap: 16, alignItems: "center" }}>
-          {/* Online badge */}
           <div className="badge" style={{
             background: online ? "#FFD60010" : "#FF1E1E0a",
             border: `1px solid ${online ? "#FFD60035" : "#FF1E1E35"}`,
@@ -609,7 +596,6 @@ export default function CarritoApp() {
             </span>
           </div>
 
-          {/* Modo badge */}
           <div className="badge" style={{
             background: isAuto ? "#FF1E1E15" : "#1a1a1a",
             border: `1px solid ${isAuto ? "#FF1E1E44" : "#2a2a2a"}`,
@@ -662,15 +648,10 @@ export default function CarritoApp() {
             })}
           </div>
 
-          {/* Velocity + Direction mini-row */}
-          <div style={{
-            marginTop: 12, paddingTop: 10, borderTop: "1px solid #151515",
-            display: "flex", gap: 12, alignItems: "center",
-          }}>
+          {/* Velocity + Direction */}
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #151515", display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 8, letterSpacing: 2, color: "#333", marginBottom: 4 }}>
-                VEL PWM
-              </div>
+              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 8, letterSpacing: 2, color: "#333", marginBottom: 4 }}>VEL PWM</div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, color: "#FFD600", lineHeight: 1, textShadow: "0 0 12px #FFD60055" }}>
                   {vel}
@@ -680,9 +661,7 @@ export default function CarritoApp() {
             </div>
             <div style={{ width: 1, height: 36, background: "#1a1a1a" }} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 8, letterSpacing: 2, color: "#333", marginBottom: 4 }}>
-                DIRECCIÓN
-              </div>
+              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 8, letterSpacing: 2, color: "#333", marginBottom: 4 }}>DIRECCIÓN</div>
               <div style={{
                 fontFamily: "'Bebas Neue',sans-serif",
                 fontSize: 32, lineHeight: 1,
@@ -706,14 +685,13 @@ export default function CarritoApp() {
           </div>
         </div>
 
-        {/* PANEL 3 — CONTROL + DPAD DISPLAY */}
+        {/* PANEL 3 — CONTROL */}
         <div className="panel">
           <div className="ptitle">
             <span className="ptitle-dot" style={{ background: isAuto ? "#FF1E1E" : "#FFD600", boxShadow: `0 0 6px ${isAuto ? "#FF1E1E" : "#FFD600"}` }} />
             MODO &amp; CONTROL
           </div>
 
-          {/* Modo indicator */}
           <div style={{
             padding: "14px 0 12px",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -734,7 +712,7 @@ export default function CarritoApp() {
             </div>
           </div>
 
-          {/* D-Pad display — muestra dirección en tiempo real */}
+          {/* D-Pad */}
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 8, letterSpacing: 2, color: "#252525", marginBottom: 8, textAlign: "center" }}>
               DIRECCIÓN ACTUAL
@@ -752,11 +730,7 @@ export default function CarritoApp() {
             </div>
           </div>
 
-          {/* Nota de uso */}
-          <div style={{
-            marginTop: "auto", padding: "10px 12px",
-            background: "#0a0a0a", borderRadius: 6, border: "1px solid #141414",
-          }}>
+          <div style={{ marginTop: "auto", padding: "10px 12px", background: "#0a0a0a", borderRadius: 6, border: "1px solid #141414" }}>
             <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 9, color: "#2a2a2a", lineHeight: 1.7 }}>
               <div style={{ color: "#FF1E1E44", marginBottom: 4 }}>// CONTROLES</div>
               <div>→ App Android  <span style={{ color: "#FFD60044" }}>⟶</span>  Firebase</div>
@@ -780,7 +754,7 @@ export default function CarritoApp() {
           <IAPanel modo={modo} iaLabel={iaLabel} iaConf={iaConf} />
 
           <div className="ptitle" style={{ marginTop: 12, marginBottom: 8 }}>
-            <span className="ptitle-dot" style={{ width: 4, height: 4, animation: `blink 1s step-start infinite` }} />
+            <span className="ptitle-dot" style={{ width: 4, height: 4, animation: "blink 1s step-start infinite" }} />
             LOG DEL SISTEMA
           </div>
           <div className="log-box">
