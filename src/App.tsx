@@ -81,7 +81,7 @@ const DIR_MAP: Record<string, string> = {
   F: "↑", B: "↓", L: "←", R: "→", I: "↗", G: "↖", J: "↘", H: "↙", S: "■"
 };
 
-const SENSOR_LABELS = ["FRONT·IZQ", "FRONT·CTR", "FRONT·DER", "LAT·IZQ", "LAT·DER"];
+const SENSOR_LABELS = ["FRONT·CTR", "DIAG·IZQ", "DIAG·DER", "LAT·IZQ", "LAT·DER"];
 const SENSOR_KEYS: (keyof SensorData)[] = ["d1", "d2", "d3", "d4", "d5"];
 
 // ── CSS ────────────────────────────────────────────────────
@@ -241,10 +241,15 @@ function CarDiagram({ sensores }: { sensores: SensorData }) {
   const L = CX - CW / 2, R = CX + CW / 2, T = CY - CH / 2, B = CY + CH / 2;
 
   const beams = [
-    { x1: L + 16, y1: T, x2: L + 16, y2: T - beam(sensores.d1, 72), c: col("d1"), a: alp(sensores.d1), v: sensores.d1, dx: 0, dy: -10 },
-    { x1: CX, y1: T, x2: CX, y2: T - beam(sensores.d2, 90), c: col("d2"), a: alp(sensores.d2), v: sensores.d2, dx: 0, dy: -10 },
+    // d1 = FRONT CTR → beam del centro (el más largo)
+    { x1: CX, y1: T, x2: CX, y2: T - beam(sensores.d1, 90), c: col("d1"), a: alp(sensores.d1), v: sensores.d1, dx: 0, dy: -10 },
+    // d2 = DIAG IZQ → beam izquierdo frontal
+    { x1: L + 16, y1: T, x2: L + 16, y2: T - beam(sensores.d2, 72), c: col("d2"), a: alp(sensores.d2), v: sensores.d2, dx: 0, dy: -10 },
+    // d3 = DIAG DER → beam derecho frontal
     { x1: R - 16, y1: T, x2: R - 16, y2: T - beam(sensores.d3, 72), c: col("d3"), a: alp(sensores.d3), v: sensores.d3, dx: 0, dy: -10 },
+    // d4 = LAT IZQ → beam lateral izquierdo (sin cambio)
     { x1: L, y1: CY, x2: L - beam(sensores.d4, 62), y2: CY, c: col("d4"), a: alp(sensores.d4), v: sensores.d4, dx: -14, dy: 3 },
+    // d5 = LAT DER → beam lateral derecho (sin cambio)
     { x1: R, y1: CY, x2: R + beam(sensores.d5, 62), y2: CY, c: col("d5"), a: alp(sensores.d5), v: sensores.d5, dx: 14, dy: 3 },
   ];
 
