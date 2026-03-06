@@ -28,13 +28,13 @@ interface LogEntry { t: string; msg: string; }
 type ModoType = "manual" | "auto";
 
 // ── Helpers ────────────────────────────────────────────────
+const MAX_DIST = 150;
 const clamp = (v: number, mn: number, mx: number) => Math.min(mx, Math.max(mn, v));
-const pct = (v: number) => clamp(Math.round((1 - v / 400) * 100), 0, 100);
+const pct = (v: number) => clamp(Math.round((v / MAX_DIST) * 100), 0, 100);
 const distColor = (v: number) => {
-  const p = pct(v);
-  if (p > 65) return "#FFD600";
-  if (p > 35) return "#FF8C00";
-  return "#FF1E1E";
+  if (v > 80) return "#FFD600"; // lejos  → amarillo
+  if (v > 40) return "#FF8C00"; // medio  → naranja
+  return "#FF1E1E";               // cerca  → rojo
 };
 
 // ── SVG Icons ──────────────────────────────────────────────
@@ -472,7 +472,7 @@ function IAPanel({ modo, iaLabel, iaConf }: { modo: ModoType; iaLabel: string; i
 export default function CarritoApp() {
   const [online, setOnline] = useState(false);
   const [modo, setModo] = useState<ModoType>("manual");
-  const [sensores, setSensores] = useState<SensorData>({ d1: 400, d2: 400, d3: 400, d4: 400, d5: 400 });
+  const [sensores, setSensores] = useState<SensorData>({ d1: 150, d2: 150, d3: 150, d4: 150, d5: 150 });
   const [iaLabel, setIaLabel] = useState("---");
   const [iaConf, setIaConf] = useState(0);
   const [dir, setDir] = useState("S");
