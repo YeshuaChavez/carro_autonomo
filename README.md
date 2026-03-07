@@ -1,3 +1,8 @@
+## Project Developers
+
+**Yeshua Chavez** - [GitHub Profile](https://github.com/YeshuaChavez)
+**Sebastian Fuentes** - [GitHub Profile](https://github.com/sebastianfuentesp-ship-it)
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
